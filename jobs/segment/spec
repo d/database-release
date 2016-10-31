@@ -1,0 +1,23 @@
+---
+name: segment
+templates:
+  segment_ctl.bash.erb: bin/segment_ctl
+  common.bash.erb: bin/common.bash
+  postgresql.conf: config/postgresql.conf
+  pg_hba.conf: config/pg_hba.conf
+  pre-start.bash.erb: bin/pre-start
+
+provides:
+  - name: segment
+    type: greenplum_segment
+
+consumes:
+  - name: master
+    type: greenplum_master
+  - name: segment
+    type: greenplum_segment
+
+packages:
+  - gpdb
+  - xerces
+  - orca

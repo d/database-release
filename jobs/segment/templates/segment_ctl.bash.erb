@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -e -u -o pipefail
+set -x
+
+# shellcheck source=jobs/segment/templates/common.bash
+source "$(dirname "$0")/common.bash"
+
+_main() {
+	local JOB_NAME
+	readonly JOB_NAME=segment
+
+	local LOG_DIR
+	readonly LOG_DIR=/var/vcap/sys/log/${JOB_NAME}
+
+	local RUN_DIR
+	readonly RUN_DIR=/var/vcap/sys/run/${JOB_NAME}
+
+	local PID_FILE
+	readonly PID_FILE=${RUN_DIR}/${JOB_NAME}.0.pid
+
+	redirect_outputs "${LOG_DIR}"
+
+	export LD_LIBRARY_PATH=/var/vcap/packages/orca/lib:/var/vcap/packages/xerces/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+	PATH=/var/vcap/packages/gpdb/bin:${PATH}
+
+	local JOB_DIR
+	readonly JOB_DIR=/var/vcap/jobs/${JOB_NAME}
+
+	local DATA_DIR
+	readonly DATA_DIR=/var/vcap/store/${JOB_NAME}/0.1
+
+	local action
+	action="${1}"
+
+	printf '%s\t' "$(date -u '+%Y-%m-%d %H:%M:%S%z')"
+
+	case "${action}" in
+		start)
+			start "${DATA_DIR}" "${JOB_DIR}"
+			;;
+		stop)
+			stop "${DATA_DIR}" "${PID_FILE}"
+			;;
+		*)
+			echo "wtf"
+			return 1
+			;;
+	esac
+}
+
+_main "$@"

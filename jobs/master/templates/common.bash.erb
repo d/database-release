@@ -1,0 +1,90 @@
+start() {
+	echo "Starting database"
+	local DATA_DIR
+	local JOB_DIR
+
+	DATA_DIR=$1
+	JOB_DIR=$2
+
+	init_db "${DATA_DIR}" "${JOB_DIR}"
+
+	exec postgres -D "${DATA_DIR}" -E
+}
+
+init_db() {
+	local DATA_DIR
+	local JOB_DIR
+
+	DATA_DIR=$1
+	JOB_DIR=$2
+
+	if [[ -f "${DATA_DIR}"/postgresql.conf ]]; then
+		copy_config "${DATA_DIR}" "${JOB_DIR}"
+	else
+		local PG_SYSTEM_OID
+		readonly PG_SYSTEM_OID=3052
+
+		initdb -D "${DATA_DIR}"
+		copy_config "${DATA_DIR}" "${JOB_DIR}"
+
+		<%
+		master_spec = link('master').instances.fetch(0)
+		segment_link = link('segment')
+		%>
+		postgres --single -D "${DATA_DIR}" postgres <<EOF
+INSERT INTO gp_segment_configuration VALUES (1, -1, 'p', 'p', 's', 'u', 5432, '<%= master_spec.address %>', '<%= master_spec.address %>', null, null);
+INSERT INTO pg_filespace_entry VALUES (${PG_SYSTEM_OID}, 1, '/var/vcap/store/master/0.1');
+<% segment_link.instances.each do |segment_spec|
+  dbid = segment_spec.index + 2
+  contentid = segment_spec.index
+  port = 40000 + segment_spec.index
+  address = segment_spec.address
+%>
+INSERT INTO gp_segment_configuration VALUES (<%= dbid %>, <%= contentid %>, 'p', 'p', 's', 'u', <%= port %>, '<%= address %>', '<%= address %>', null, null);
+INSERT INTO pg_filespace_entry VALUES (${PG_SYSTEM_OID}, <%= dbid %>, '/var/vcap/store/segment/0.1');
+<% end %>
+EOF
+	fi
+}
+
+copy_config() {
+	local DATA_DIR
+	local JOB_DIR
+
+	DATA_DIR=$1
+	JOB_DIR=$2
+
+	cp "${JOB_DIR}/config/postgresql.conf" "${DATA_DIR}/postgresql.conf"
+	cp "${JOB_DIR}/config/pg_hba.conf" "${DATA_DIR}/pg_hba.conf"
+}
+
+stop() {
+	echo "Stopping database"
+	local DATA_DIR
+	local PID_FILE
+
+	DATA_DIR=$1
+	PID_FILE=$2
+
+	if [[ -f "${DATA_DIR}/postmaster.pid" ]]; then
+		pg_ctl stop -w -D "${DATA_DIR}"
+		rm -f "${PID_FILE}"
+	else
+		return 0
+	fi
+}
+
+redirect_outputs() {
+	local LOG_DIR
+	LOG_DIR=$1
+
+	local script
+	script=$(basename "$0")
+
+	exec 1> >(mux "${LOG_DIR}/${script}.stdout.log")
+	exec 2> >(mux "${LOG_DIR}/${script}.stderr.log" >&2)
+}
+
+mux() {
+	tee -a "$@"
+}

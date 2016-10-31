@@ -1,0 +1,25 @@
+---
+name: master
+templates:
+  master_ctl.bash.erb: bin/master_ctl
+  common.bash.erb: bin/common.bash
+  postgresql.conf: config/postgresql.conf
+  pg_hba.conf: config/pg_hba.conf
+  pre-start.bash.erb: bin/pre-start
+
+provides:
+  - name: db
+    type: postgresql
+  - name: master
+    type: greenplum_master
+
+consumes:
+  - name: master
+    type: greenplum_master
+  - name: segment
+    type: greenplum_segment
+
+packages:
+  - gpdb
+  - xerces
+  - orca

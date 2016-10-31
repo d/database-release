@@ -1,0 +1,40 @@
+#!/bin/bash
+
+set -e -u -o pipefail
+set -x
+
+_main() {
+	redirect_outputs
+
+	readonly STORE_DIR=/var/vcap/store/master
+	mkdir -p "${STORE_DIR}"
+	chown vcap:vcap "${STORE_DIR}"
+
+	readonly LOG_DIR=/var/vcap/sys/log/master
+	mkdir -p "${LOG_DIR}"
+	chown -R vcap:vcap "${LOG_DIR}"
+
+	mkdir -p /var/vcap/sys/log/monit
+	chown -R vcap:vcap /var/vcap/sys/log/monit
+
+	readonly RUN_DIR=/var/vcap/sys/run/master
+	mkdir -p "${RUN_DIR}"
+	chown -R vcap:vcap "${RUN_DIR}"
+}
+
+redirect_outputs() {
+	local script
+	script=$(basename "$0")
+
+	local LOG_DIR
+	readonly LOG_DIR=/var/vcap/sys/log/master
+
+	exec 1> >(mux "${LOG_DIR}/${script}.stdout.log")
+	exec 2> >(mux "${LOG_DIR}/${script}.stderr.log" >&2)
+}
+
+mux() {
+	tee -a "$@"
+}
+
+_main "$@"

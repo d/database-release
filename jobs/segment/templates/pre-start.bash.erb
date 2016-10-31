@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -e -u -o pipefail
+set -x
+
+# shellcheck source=jobs/segment/templates/common.bash
+source "$(dirname "$0")/common.bash"
+
+_main() {
+	local JOB_NAME
+	readonly JOB_NAME=segment
+
+	local LOG_DIR
+	readonly LOG_DIR=/var/vcap/sys/log/${JOB_NAME}
+	mkdir -p "${LOG_DIR}"
+	chown -R vcap:vcap "${LOG_DIR}"
+
+	redirect_outputs "${LOG_DIR}"
+
+	local RUN_DIR
+	readonly RUN_DIR=/var/vcap/sys/run/${JOB_NAME}
+	mkdir -p "${RUN_DIR}"
+	chown -R vcap:vcap "${RUN_DIR}"
+
+	local STORE_DIR
+	readonly STORE_DIR=/var/vcap/store/${JOB_NAME}
+	mkdir -p "${STORE_DIR}"
+	chown vcap:vcap "${STORE_DIR}"
+
+	mkdir -p /var/vcap/sys/log/monit
+	chown -R vcap:vcap /var/vcap/sys/log/monit
+}
+
+_main "$@"

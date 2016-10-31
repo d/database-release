@@ -1,0 +1,8 @@
+check process master
+  with pidfile /var/vcap/sys/run/master/master.pid
+  start program "/var/vcap/jobs/master/bin/master_ctl start"
+    as uid vcap and gid vcap
+    with timeout 150 seconds
+  stop program "/var/vcap/jobs/master/bin/master_ctl stop"
+    as uid vcap and gid vcap
+  group vcap

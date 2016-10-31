@@ -1,0 +1,8 @@
+check process segment
+  with pidfile /var/vcap/sys/run/segment/segment.0.pid
+  start program "/var/vcap/jobs/segment/bin/segment_ctl start"
+    as uid vcap and gid vcap
+    with timeout 150 seconds
+  stop program "/var/vcap/jobs/segment/bin/segment_ctl stop"
+    as uid vcap and gid vcap
+  group vcap

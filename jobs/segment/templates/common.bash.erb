@@ -1,0 +1,77 @@
+start() {
+	echo "Starting database"
+	local DATA_DIR
+	local JOB_DIR
+
+	DATA_DIR=$1
+	JOB_DIR=$2
+
+	init_db "${DATA_DIR}" "${JOB_DIR}"
+
+	exec postgres -D "${DATA_DIR}"
+}
+
+init_db() {
+	local DATA_DIR
+	local JOB_DIR
+
+	DATA_DIR=$1
+	JOB_DIR=$2
+
+	if [[ -f "${DATA_DIR}"/postgresql.conf ]]; then
+		copy_config "${DATA_DIR}" "${JOB_DIR}"
+	else
+		local PG_SYSTEM_OID
+		readonly PG_SYSTEM_OID=3052
+
+		initdb -D "${DATA_DIR}"
+		copy_config "${DATA_DIR}" "${JOB_DIR}"
+
+		<%
+		master_spec = link('master').instances.fetch(0)
+		segment_link = link('segment')
+		%>
+	fi
+}
+
+copy_config() {
+	local DATA_DIR
+	local JOB_DIR
+
+	DATA_DIR=$1
+	JOB_DIR=$2
+
+	cp "${JOB_DIR}/config/postgresql.conf" "${DATA_DIR}/postgresql.conf"
+	cp "${JOB_DIR}/config/pg_hba.conf" "${DATA_DIR}/pg_hba.conf"
+}
+
+stop() {
+	echo "Stopping database"
+	local DATA_DIR
+	local PID_FILE
+
+	DATA_DIR=$1
+	PID_FILE=$2
+
+	if [[ -f "${DATA_DIR}/postmaster.pid" ]]; then
+		pg_ctl stop -w -D "${DATA_DIR}"
+		rm -f "${PID_FILE}"
+	else
+		return 0
+	fi
+}
+
+redirect_outputs() {
+	local LOG_DIR
+	LOG_DIR=$1
+
+	local script
+	script=$(basename "$0")
+
+	exec 1> >(mux "${LOG_DIR}/${script}.stdout.log")
+	exec 2> >(mux "${LOG_DIR}/${script}.stderr.log" >&2)
+}
+
+mux() {
+	tee -a "$@"
+}
