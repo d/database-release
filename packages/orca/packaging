@@ -4,17 +4,7 @@ set -o posix
 
 _main() {
 	PATH=/var/vcap/packages/cmake/bin:"${PATH}"
-	install_gpos
 	install_orca
-}
-
-install_gpos() {
-	(
-	mkdir build.gpos
-	pushd build.gpos
-	cmake -DCMAKE_INSTALL_PREFIX="${BOSH_INSTALL_TARGET}" ../gpos
-	make -j"$(nproc)" install
-	)
 }
 
 install_orca() {
